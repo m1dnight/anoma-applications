@@ -10,11 +10,11 @@ on:
 jobs:
   app-jobs:
     # needs: setup
-    services:
-      anoma:
-        image: m1dnight/anoma:latest
-        ports:
-          - 4000:4000
+    # services:
+    #   anoma:
+    #     image: m1dnight/anoma:latest
+    #     ports:
+    #       - 4000:4000
     runs-on: ubuntu-latest
     strategy:
       matrix:
