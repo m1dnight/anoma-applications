@@ -29,6 +29,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: download juvix compiler
+        run: |
+          DOWNLOAD_URL="https://github.com/anoma/juvix-nightly-builds/releases/download/nightly-2025-05-20-0.6.10-6acdc3a/juvix-linux-x86_64.tar.gz"
+          curl -L -o juvix.tar.gz "$DOWNLOAD_URL"
+          tar -xzf juvix.tar.gz
+          chmod +x juvix
+
+          # Verify the download
+          ./juvix --version
+
+          # Move to a location in PATH
+          mkdir -p $HOME/.local/bin
+          mv juvix $HOME/.local/bin/
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Run ${{ matrix.app }}
         run: |
           echo "Running ${{ matrix.app }}"
