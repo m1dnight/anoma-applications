@@ -47,4 +47,15 @@ jobs:
       - name: Run ${{ matrix.app }}
         run: |
           echo "Running ${{ matrix.app }}"
+
+          # create output directory if it doesn't exist
+          mkdir -p ${{matrix.app}}/.compiled
+
+          # compile all juvix files
+          for file in $(find ${{matrix.app}} -type f -name "*.juvix"); do
+            filename=$(basename "$file")
+            echo "Compiling $file to .compiled/${filename%.juvix}.nockma"
+            juvix compile anoma "$file" -o "${{matrix.app}}/.compiled/${filename%.juvix}.nockma"
+          done
+
           elixir ${{matrix.app}}/run.exs
