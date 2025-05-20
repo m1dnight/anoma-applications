@@ -8,13 +8,13 @@ on:
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    services:
-      anoma:
-        image: m1dnight/anoma:latest
-        ports:
-          - 4000:4000
+  # setup:
+  #   runs-on: ubuntu-latest
+  #   services:
+  #     anoma:
+  #       image: m1dnight/anoma:latest
+  #       ports:
+  #         - 4000:4000
 
   app-jobs:
     needs: setup
@@ -24,8 +24,11 @@ jobs:
         app: [Spacebucks]
       fail-fast: false  # Allows other jobs to continue even if one fails
       max-parallel: 5  # Run all 5 jobs concurrently
-
     steps:
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: 27.3.3
+          elixir-version: 1.18.3
       - name: Checkout code
         uses: actions/checkout@v4
 
