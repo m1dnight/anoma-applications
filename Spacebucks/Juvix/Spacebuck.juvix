@@ -1,0 +1,159 @@
+module Spacebucks.Spacebuck;
+
+import Stdlib.Prelude open;
+import Applib open;
+import Anoma.Encode open;
+import Stdlib.Debug.Trace open;
+import Anoma.Identity.External open;
+import Anoma.Identity.Internal open;
+
+-- ### Module, imports ###
+
+-- The logic function is called in every transaction that tries to either
+-- consume or create a resource in Spacebucks.
+--
+-- So, given a Spacebuck, the logic function should verify that:
+--
+-- 1. If the resource is not being consumed, it can be creatd.
+-- 2. If the resource is ephemeral, it can be created.
+-- 3. The resource is not ephemeral, and is
+
+-- if a value influences the kind, it should go in label
+-- if it does not, it should go into value (kind of meta-data for a resource)
+logicFunction (args : Logic.Args) : Bool :=
+  trace "beginning"
+    >-> trace "isConsumed"
+    >-> trace (Logic.Args.isConsumed args)
+    >-> trace (Resource.nonce (Logic.Args.self args))
+    >-> trace (listMap Resource.nonce (Logic.Args.consumed args))
+    >-> trace (listMap Resource.nonce (Logic.Args.created args))
+    >-> trace (length (Logic.Args.created args))
+    >-> trace (Logic.Args.appData args)
+    >-> trace (Resource.ephemeral (Logic.Args.self args))
+    >-> trace "ending"
+    >-> true;
+
+-- ----------------------------------------------------------------------------
+--  Create a transaction to mint some spacebucks.
+
+create-spacebucks-transaction
+  {M : Type -> Type}
+  {{Monad M}}
+  {{Tx M}}
+  (logic : Logic)
+  (creator : Identity)
+  : M Transaction :=
+  do {
+    ctx <- getTxContext;
+    nonce1 <- genRandomNonce;
+    nonce2 <- genRandomNonce;
+    let
+      label := Label.mk 0;
+      quantity := 10;
+      nonce := Nonce.toRaw nonce1;
+      value : SpacebuckValue := make-spacebuck-value creator;
+      newResource := make-spacebuck logic creator label quantity nonce;
+    in
+    mkTransactionNoPublicData@{
+      consumed :=
+        [newResource@Resource{ephemeral := true; nonce := Nonce.toRaw nonce2}];
+      created := [newResource];
+    };
+  };
+
+
+-- ----------------------------------------------------------------------------
+--  Value for a Spacebuck
+--
+-- The value of a spacebuck is the meta-data associated with it.
+-- For each user, we add the owner as the value.
+
+type SpacebuckValue :=
+  mkSpacebuckValue@{
+    creator : ExternalIdentity;
+  };
+
+make-spacebuck-value (creator : Identity) : SpacebuckValue :=
+  SpacebuckValue.mkSpacebuckValue@{
+    creator := Identity.external creator;
+  };
+
+-- ----------------------------------------------------------------------------
+--  Spacebuck definition
+
+-- resourceLogic: The logic of a resource defines constraints on how it can be
+-- consumed or created.
+--
+-- creator: The keypair of the user who creates this resource.
+--
+-- label: The label is the unique identifier of a resource. It differentiates
+-- between Bob's spacebucks and Alice's spacebucks.
+--
+-- value: the value of the resource. This is sort of a meta data field where we can put in anything we want.
+--
+-- quantity: quantity of the resource, e.g., how many spacebucks.
+--
+-- nonce: the nonce of the resource. TODO
+make-spacebuck
+  (resource-logic : Logic)
+  (creator : Identity)
+  (label : Label)
+  (quantity : Nat)
+  (nonce : Nonce.Raw)
+  : Resource :=
+  let
+    spacebuck-value : SpacebuckValue := make-spacebuck-value creator;
+    value : AnomaAtom := (AnomaAtom.fromNat (builtinAnomaEncode spacebuck-value));
+  in
+  Resource.mk@{
+    logic := Encoded.encode resource-logic;
+    label := make-spacebuck-label;
+    value := value;
+    quantity := quantity;
+    ephemeral := true;
+    nonce := nonce;
+    nullifierKeyCommitment := 0;
+    unusedRandSeed := 0;
+  };
+
+-- ----------------------------------------------------------------------------
+--  Spacebuck Label
+--
+-- The label of a spacebuck is just the string "Spacebuck".
+
+make-spacebuck-label : Label := Label.mk (builtinAnomaEncode "spacebucks");
+
+-- ----------------------------------------------------------------------------
+--  Main function
+
+-- The label of a spacebuck is what uniquely identifies it. If Bob makes a
+-- spacebuck, it's uniquely identified by the pair
+-- (bob_public_key, "spacebuck").
+main
+  (logic : Logic)
+  (publicKey : ByteArray)
+  (privateKey : ByteArray)
+  : TransactionRequest :=
+  let
+    -- parse the public and private key from the arguments and create the caller
+    public-key : ExternalIdentity := ExternalIdentity.fromByteArray publicKey;
+    private-key : InternalIdentity := InternalIdentity.fromByteArray privateKey;
+    creator : Identity :=
+      Identity.mk@{
+        internal := private-key;
+        external := public-key;
+      };
+    -- create the transaction context which holds the caller and the current root
+    context : TxContext :=
+      TxContext.mk@{
+        caller := creator;
+        currentRoot := CommitmentRoot.fromNat 0;
+      };
+  in TransactionRequest.build
+    0
+    context
+    (create-spacebucks-transaction logic creator);
+
+-- Questions
+-- =========
+--  What is a nonce for a resource? What purpose does it serve?
