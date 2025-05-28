@@ -1,0 +1,68 @@
+# Start with an Elixir base image
+FROM  elixir:1.17
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    wget \
+    python3 \
+    python3-pip \
+    llvm \
+    curl \
+    clang \
+    && rm -rf /var/lib/apt/lists/*
+
+# install Haskell's Stack
+# RUN curl -sSL https://get.haskellstack.org/ | sh
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+# Install yq for parsing yaml
+# RUN wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+#     && chmod +x /usr/local/bin/yq
+
+# Install Juvix
+# RUN mkdir /opt/juvix \
+#     && git clone --recursive https://github.com/anoma/juvix.git /opt/juvix && cd /opt/juvix \
+#     && make install
+
+# Install protobuf
+RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v30.2/protoc-30.2-linux-x86_64.zip \
+    && unzip protoc-30.2-linux-x86_64.zip -d $HOME/.local
+
+    # Install protobuf elixir plugin
+RUN mix escript.install hex protobuf 0.11.0 --force
+
+# Install Anoma and fetch deps
+ENV CARGO_HOME=/root/.cargo
+RUN export PATH="/root/.mix/escripts:$HOME/.local/bin:$PATH"   \
+    && . $CARGO_HOME/env                                       \
+    && mkdir /opt/anoma                                        \
+    && git clone https://github.com/anoma/anoma.git /opt/anoma \
+    && cd /opt/anoma                                           \
+    && git checkout base                                       \
+    && mix local.hex --force                                   \
+    && mix local.rebar --force                                 \
+    && mix deps.get                                            \
+    && mix compile
+
+# Switch to the desired branch and compile again.
+# This is a separate step to keep most of the compilation in cache.
+ARG ANOMA_BRANCH=m1dnight/anoma-app-testbranch
+ENV CARGO_HOME=/root/.cargo
+RUN export PATH="/root/.mix/escripts:$HOME/.local/bin:$PATH"   \
+    && . $CARGO_HOME/env                                       \
+    && cd /opt/anoma                                           \
+    && git checkout "${ANOMA_BRANCH}"                          \
+    && mix deps.get                                            \
+    && mix compile
+# Cleanup unnecessary stuff
+# RUN rm -rf /opt/juvix
+
+COPY entrypoint.sh /entrypoint.sh
+COPY run.exs /run.exs
+
+# Set the entrypoint
+ENTRYPOINT ["/entrypoint.sh"]

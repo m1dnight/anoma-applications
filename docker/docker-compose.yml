@@ -1,0 +1,10 @@
+services:
+  controller:
+    build:
+      context: .
+      dockerfile: Dockerfile.controller
+    image: controller:latest
+    tty: true
+    stdin_open: true
+    ports:
+      - 0.0.0.0:4000:4000

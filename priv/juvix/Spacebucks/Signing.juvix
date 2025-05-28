@@ -1,0 +1,114 @@
+module Spacebucks.Signing;
+
+import Stdlib.Prelude open;
+import Applib open;
+import Anoma.Encode open;
+import Stdlib.Debug.Trace open;
+import Anoma.Identity.External open;
+import Anoma.Identity.Internal open;
+import BaseLayer.ResourceMachine open;
+import Anoma.Builtin.System as SystemBuiltins open;
+import Spacebucks.Helpers open;
+
+-- create an appdata entry for the given nullifier
+create-app-data-entry-nullifier
+  (identity : Identity)
+  (nullifier : Nullifier)
+  : Pair RawTag (List AppData.Value) :=
+  let
+    signature-value : AppData.Value := create-signature-value identity;
+    signature-key : RawTag := Nullifier.toRawTag nullifier;
+  in signature-key, [signature-value];
+
+-- create an appdata entry for the given commitment
+create-app-data-entry-commitment
+  (identity : Identity)
+  (commitment : Commitment)
+  : Pair RawTag (List AppData.Value) :=
+  let
+    signature-value : AppData.Value := create-signature-value identity;
+    signature-key : RawTag := Commitment.toRawTag commitment;
+    atom : Pair RawTag (List AppData.Value) := signature-key, [signature-value];
+  in trace "signature value"
+    >-> trace signature-value
+    >-> trace "signature key"
+    >-> trace signature-key
+    >-> atom;
+
+-- create the app data for the given nullifiers and commitments
+create-app-data
+  (identity : Identity)
+  (nullifiers : List Nullifier)
+  (commitments : List Commitment)
+  : Map RawTag (List AppData.Value) :=
+  let
+    nullifiers : List (Pair RawTag (List AppData.Value))  := map (create-app-data-entry-nullifier identity) nullifiers;
+    commitments : List (Pair RawTag (List AppData.Value)) := map (create-app-data-entry-commitment identity) commitments;
+  in Map.fromList (nullifiers ++ commitments);
+
+-- create a list of nullifiers for the given list of resources.
+nullifiers-for-consumed (resources : List Resource) : List Nullifier :=
+  map Resource.Transparent.nullifier resources;
+
+-- create a list of commitments for a list of resources.
+commitments-for-created (resources : List Resource) : List Commitment :=
+  map (rawCommitment >> Commitment.fromNat) resources;
+
+-- create a signature for a message and the given identity.
+create-signature (message : Nat) (identity : Identity) : Signature :=
+  let
+    private-key : InternalIdentity := Identity.internal identity;
+    key-bytes : ByteArray := InternalIdentity.toByteArray private-key;
+    signature : ByteArray := SystemBuiltins.anomaSignDetached 0 key-bytes;
+  in Signature.mk@{
+       unSignature := signature;
+     };
+
+-- create a signature wrapped in an AppData.Value record.
+-- This is necessary to store it in the app data.
+create-signature-value (identity : Identity) : AppData.Value :=
+  let
+    signature : Signature := create-signature 0 identity;
+    signature-atom : AnomaAtom := (encode-atom signature);
+    signature-value : AppData.Value :=
+      AppData.Value.mk@{
+        atom := signature-atom;
+        deletionCriteria := false;
+      };
+  in
+  trace "create-signature-value"
+  >-> trace "signature"
+  >-> trace signature
+  >-> trace ""
+  >-> trace "create appdata.value"
+  >-> trace signature-value
+  >-> trace ""
+  >-> trace "create jammed appdata.value"
+  >-> trace (encode-atom signature-value)
+  >-> trace ""
+  >-> (verify-signature (Identity.external identity) signature-value)
+  >-> signature-value;
+
+-- given a public key and a signature, verifies the signature.
+  verify-signature (identity : ExternalIdentity) (signature-value : AppData.Value) : Bool :=
+  let
+    signature-atom : AnomaAtom :=  AppData.Value.atom signature-value;
+    signature : Signature      :=  decode-atom signature-atom;
+    signature-bytes            :=  Signature.unSignature signature;
+    message                    :=  0;
+    public-key-bytes           :=  ExternalIdentity.toByteArray identity;
+    verified                   :=  anomaVerifyDetached signature-bytes message public-key-bytes;
+  in
+  trace "verify signature"
+  >-> trace "verify appdata.value"
+  >-> trace signature-value
+  >-> trace "signature-bytes"
+  >-> trace signature-bytes
+  >-> trace "public key signature-bytes"
+  >-> trace public-key-bytes
+  >-> trace "verified?"
+  >-> trace verified
+  >-> verified;
+
+-- signature-value : AppData.Value
+-- hint: [<<193, 129, 0, 228, 55, 118, 196, 48, 199, 16, 63, 140, 54, 204, 124, 128, 202, 29, 58, 123, 72, 187, 28, 239, 97, 191, 238, 225, 41, 78, 57, 168, 231, 216, 231, 79, 39, 133, 109, 250, 36, 212, 24, 158, 59, 15, 199, 253, 80, ...>> | ""]

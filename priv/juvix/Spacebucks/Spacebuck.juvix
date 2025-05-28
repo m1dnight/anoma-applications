@@ -1,0 +1,82 @@
+module Spacebucks.Spacebuck;
+
+import Stdlib.Prelude open;
+import Applib open;
+import Anoma.Encode open;
+import Stdlib.Debug.Trace open;
+import Anoma.Identity.External open;
+import Anoma.Identity.Internal open;
+import BaseLayer.ResourceMachine open;
+import Anoma.Builtin.System as SystemBuiltins open;
+import Spacebucks.Helpers open;
+
+-- Returns the owner of a spacebuck resource.
+-- The owner is defined by their public key.
+spacebuck-owner (resource : Resource) : ExternalIdentity :=
+  let
+    atom : AnomaAtom := Resource.value resource;
+    nat : Nat := AnomaAtom.toNat atom;
+    value : SpacebuckValue := builtinAnomaDecode nat;
+    owner : ExternalIdentity := SpacebuckValue.owner value;
+  in owner;
+
+-- ----------------------------------------------------------------------------
+--  Value for a Spacebuck
+--
+-- The value of a spacebuck is the meta-data associated with it.
+-- For each user, we add the owner as the value.
+
+type SpacebuckValue :=
+  mkSpacebuckValue@{
+    owner : ExternalIdentity;
+  };
+
+make-spacebuck-value (creator : ExternalIdentity) : SpacebuckValue :=
+  SpacebuckValue.mkSpacebuckValue@{
+    owner := creator;
+  };
+
+-- ----------------------------------------------------------------------------
+--  Spacebuck Label
+--
+-- The label of a spacebuck is just the string "Spacebuck".
+
+make-spacebuck-label : Label := Label.mk (builtinAnomaEncode "spacebucks");
+
+-- ----------------------------------------------------------------------------
+--  Spacebuck definition
+
+-- resourceLogic: The logic of a resource defines constraints on how it can be
+-- consumed or created.
+--
+-- creator: The keypair of the user who creates this resource.
+--
+-- label: The label is the unique identifier of a resource. It differentiates
+-- between Bob's spacebucks and Alice's spacebucks.
+--
+-- value: the value of the resource. This is sort of a meta data field where we can put in anything we want.
+--
+-- quantity: quantity of the resource, e.g., how many spacebucks.
+--
+-- nonce: the nonce of the resource. TODO
+make-spacebuck
+  (resource-logic : Logic)
+  (creator : Identity)
+  (label : Label)
+  (quantity : Nat)
+  (nonce : Nonce)
+  : Resource :=
+  let
+    creator-public : ExternalIdentity := Identity.external creator;
+    spacebuck-value : SpacebuckValue := make-spacebuck-value creator-public;
+    value : AnomaAtom := (encode-atom spacebuck-value);
+  in Resource.mk@{
+       logic := Encoded.encode resource-logic;
+       label := make-spacebuck-label;
+       value := value;
+       quantity := quantity;
+       ephemeral := false;
+       nonce := nonce;
+       nullifierKeyCommitment := NullifierKeyCommitment.zero;
+       unusedRandSeed := 0;
+     };

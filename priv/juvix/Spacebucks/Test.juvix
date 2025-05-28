@@ -1,0 +1,21 @@
+module Spacebucks.Test;
+
+import Stdlib.Prelude open;
+import Applib open;
+import Anoma.Encode open;
+import Stdlib.Debug.Trace open;
+import Anoma.Identity.External open;
+import Anoma.Identity.Internal open;
+import BaseLayer.ResourceMachine open;
+import Anoma.Builtin.System as SystemBuiltins open;
+import Spacebucks.Spacebuck open;
+
+main : String :=
+  let
+    number : Nat :=
+      159798390744487731888163574353608617290629346429539377805486933161568433394400098271553;
+    value : SpacebuckValue := builtinAnomaDecode number;
+  in trace value >-> trace number >-> "yolo";
+
+-- hint: [" " | <<38, 10, 200, 104, 228, 209, 172, 183, 104, 161, 128, 0, 231, 202, 245, 168, 246, 35, 29, 53, 228, 2, 91, 57, 65, 155, 95, 77, 13, 212, 65, 82>>]
+-- hint: <<65, 65, 0, 255, 38, 10, 200, 104, 228, 209, 172, 183, 104, 161, 128, 0, 231, 202, 245, 168, 246, 35, 29, 53, 228, 2, 91, 57, 65, 155, 95, 77, 13, 212, 65, 82>>
