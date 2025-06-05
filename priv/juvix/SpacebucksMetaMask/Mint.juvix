@@ -1,0 +1,196 @@
+module SpacebucksMetaMask.Mint;
+
+import Stdlib.Prelude open;
+import Applib open;
+import Anoma.Encode open;
+import Stdlib.Debug.Trace open;
+import Anoma.Identity.External open;
+import Anoma.Identity.Internal open;
+import BaseLayer.ResourceMachine open;
+import Anoma.Builtin.System as SystemBuiltins open;
+import Spacebucks.Helpers open;
+import Spacebucks.Signing open;
+import Spacebucks.Spacebuck open;
+
+-- ----------------------------------------------------------------------------
+--  Logic function
+
+-- validate an ephemeral consumed resource
+-- always valid
+validate-ephemeral-consumed-resource (args : Logic.Args) : Bool :=
+  trace "ephemeral consumed valid?" >-> trace true >-> true;
+
+-- validate a consumed resource
+-- always valid
+validate-non-ephemeral-consumed-resource (args : Logic.Args) : Bool :=
+  trace "non-ephemeral consumed valid?" >-> trace true >-> true;
+
+-- validate an ephemeral created resource
+-- always valid
+validate-ephemeral-created-resource (args : Logic.Args) : Bool :=
+  trace "ephemeral created valid?" >-> trace true >-> true;
+
+
+-- Given a public key, verifies the list of appdata values.
+verify-consumed-resource (appdata-values : List AppData.Value) (identity : ExternalIdentity) : Bool :=
+  let
+    verifications : List Bool := map (verify-signature identity) appdata-values;
+  in
+    all id verifications;
+
+-- validate a created resource to create a resource, we must verify that the
+-- signature in the created resource can be verified using the public key of the
+-- owner of the consumed resource.
+--
+-- If bob has 1 apple, and wants to transfer it to alice.
+-- the transfer transaction will create a new resource with owner alice, and consume a resource with owner bob.
+--
+-- to verify that this is allowed, verify the signature in the appdata using the public key found in the created resource.
+validate-non-ephemeral-created-resource (args : Logic.Args) : Bool :=
+  let
+    -- this is the owner of the new resource
+    new-owner : ExternalIdentity := spacebuck-owner (Logic.Args.self args);
+
+    -- this is the list of owners of the consumed resources
+    old-owners : List ExternalIdentity := map (spacebuck-owner) (Logic.Args.consumed args);
+
+    -- the list of signatures in the action
+    appdata-values : List AppData.Value := Logic.Args.data args;
+
+    -- verify all consumed resources
+    verifications : List Bool := map (verify-consumed-resource appdata-values) old-owners;
+  in
+    all id verifications;
+
+logicFunction (args : Logic.Args) : Bool :=
+  let
+    is-created := not (Logic.Args.isConsumed args);
+    is-ephemeral := Resource.ephemeral (Logic.Args.self args);
+  in if
+    | is-ephemeral && is-created := validate-ephemeral-created-resource args
+    | is-ephemeral := validate-ephemeral-consumed-resource args
+    | is-created := validate-non-ephemeral-created-resource args
+    | else := validate-non-ephemeral-consumed-resource args;
+
+-- ----------------------------------------------------------------------------
+--  Create a transaction to mint some spacebucks.
+
+create-spacebucks-transaction
+  {M : Type -> Type}
+  {{Monad M}}
+  {{Tx M}}
+  (logic : Logic)
+  (identity : Identity)
+  : M Transaction :=
+  do {
+    ctx <- getTxContext;
+    nonce-created <- genRandomNonce;
+    nonce-consumed <- genRandomNonce;
+    let
+      label := Label.mk 0;
+      quantity := 10;
+
+      -- the current root passed in via the transaction context
+      current-root : CommitmentRoot := TxContext.currentRoot ctx;
+      -- create the created resource and its commitment
+      created-resource :=
+        make-spacebuck logic identity label quantity nonce-created;
+
+      -- create the consumed ephemeral resource and its nullifier
+      consumed-resource : Resource :=
+        created-resource@Resource{
+          ephemeral := true;
+          nonce := nonce-consumed;
+        };
+
+      -- create commitments and nullifiers
+      commitments : List Commitment :=
+        commitments-for-created [created-resource];
+      nullifiers : List Nullifier :=
+        nullifiers-for-consumed [consumed-resource];
+
+      rooted-nullifier :=
+        RootedNullifiableResource.Transparent.mk current-root consumed-resource;
+
+      appdata-map : Map RawTag (List AppData.Value) := create-app-data identity nullifiers commitments;
+
+      appdata-mine :  AnomaMap RawTag (List AppData.Value) := (AnomaMap.fromList (Map.toList appdata-map));
+      my-appdata : AppData := AppData.privateMk appdata-mine;
+
+      -- appdata : AppData := AppData.fromMap (create-app-data identity nullifiers commitments);
+
+      action : Action :=
+        trace "appdata going in" >-> trace my-appdata >-> Action.create@{
+          consumed := [rooted-nullifier];
+          created := [created-resource];
+          appData := my-appdata;
+        };
+      -- commitment roots
+      commitment-roots := [current-root];
+
+      -- roots
+      roots := AnomaSet.fromList commitment-roots;
+      actions := AnomaSet.fromList [action];
+
+    in
+    pure
+      Transaction.mk@{
+        roots := AnomaSet.fromList commitment-roots;
+        actions := AnomaSet.fromList [action];
+      };
+  };
+
+-- ----------------------------------------------------------------------------
+--  Main function
+
+-- The label of a spacebuck is what uniquely identifies it. If Bob makes a
+-- spacebuck, it's uniquely identified by the pair
+-- (bob_public_key, "spacebuck").
+main
+  (logic : Logic)
+  (publicKey : ByteArray)
+  (privateKey : ByteArray)
+  (latest-root : CommitmentRoot)
+  : TransactionRequest :=
+  let
+    -- wrap the public and private key in a tuple to add in their length
+    -- i have no idea why this is here, but whatever.
+    -- parse the public and private key from the arguments and create the caller
+    public-key := fix-raw-public-key publicKey;
+    private-key := fix-raw-private-key privateKey;
+    -- create the identity record that holds the keypair.
+    creator : Identity :=
+      Identity.mk@{
+        internal := private-key;
+        external := public-key;
+      };
+    -- create the transaction context which holds the caller and the current root
+    context : TxContext :=
+      TxContext.mk@{
+        caller := creator;
+        currentRoot := latest-root;
+      };
+  in TransactionRequest.build
+    0
+    context
+    (create-spacebucks-transaction logic creator);
+
+-- Questions
+-- =========
+--  What is a nonce for a resource? What purpose does it serve?
+
+-- Create a transaction to transfer resource R from A to B
+-- =======================================================
+
+-- A submits a transaction with parameters [R, A_public_key, A_private_key, B_public_key]
+
+-- In the transaction function:
+
+--   - create a resource R' that has B as the owner
+--   - put actions in the transaction that contain the signature of some message M, signed with A_public_key, and A_private_key
+
+-- The resource logic then verifies this transaction by:
+--   - the resource logic can verify by using:
+--     - the public key in the resource
+--     - the message that was originally signed
+--     - the signature put into the actions in the transaction function

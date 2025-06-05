@@ -11,7 +11,7 @@ defmodule AnomaApps.Spacebucks.Helpers do
   """
   @spec resource_logic :: {:ok, jammed_noun()} | {:error, :failed_to_prove}
   def resource_logic do
-    nockma = File.read!("#{:code.priv_dir(:anoma_apps)}/juvix/.compiled/Logic.nockma")
+    nockma = File.read!("#{:code.priv_dir(:anoma_apps)}/juvix/.compiled/Spacebucks/Logic.nockma")
 
     case Client.prove(nockma, [], []) do
       {:ok, compiled_logic, _hints} ->

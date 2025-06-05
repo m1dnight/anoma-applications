@@ -6,7 +6,7 @@ defmodule AnomaApps.Spacebucks.Transfer do
   alias AnomaApps.Client
   alias AnomaApps.Spacebucks.Helpers
   alias AnomaApps.Spacebucks.Initialize
-  alias AnomaApps.Spacebucks.User
+  alias AnomaApps.Shared.User
 
   @doc """
   I transfer spacebucks from one user to another.
@@ -21,7 +21,7 @@ defmodule AnomaApps.Spacebucks.Transfer do
 
     # read the Transfer.nockma code
     {:ok, transfer_nockma} =
-      File.read("#{:code.priv_dir(:anoma_apps)}/juvix/.compiled/Transfer.nockma")
+      File.read("#{:code.priv_dir(:anoma_apps)}/juvix/.compiled/Spacebucks/Transfer.nockma")
 
     # Fetch the latest root from the Anoma controller.
     latest_root = Client.latest_root()
@@ -63,7 +63,7 @@ defmodule AnomaApps.Spacebucks.Transfer do
 
     # read the Transfer.nockma code
     {:ok, transfer_nockma} =
-      File.read("#{:code.priv_dir(:anoma_apps)}/juvix/.compiled/Transfer.nockma")
+      File.read("#{:code.priv_dir(:anoma_apps)}/juvix/.compiled/Spacebucks/Transfer.nockma")
 
     # Fetch the latest root from the Anoma controller.
     latest_root = Client.latest_root()

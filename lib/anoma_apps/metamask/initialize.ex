@@ -1,11 +1,11 @@
-defmodule AnomaApps.Spacebucks.Initialize do
+defmodule AnomaApps.MetaMask.Initialize do
   @moduledoc """
   I initialize a User with an arbitrary amount of Spacebucks.
   """
 
   alias AnomaApps.Client
   alias AnomaApps.Spacebucks.Helpers
-  alias AnomaApps.Shared.User
+  alias AnomaApps.Spacebucks.User
 
   @doc """
   I initialize some Spacebucks for an arbitrary user.
