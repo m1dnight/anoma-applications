@@ -59,7 +59,7 @@ create-signature (message : Nat) (identity : Identity) : Signature :=
   let
     private-key : InternalIdentity := Identity.internal identity;
     key-bytes : ByteArray := InternalIdentity.toByteArray private-key;
-    signature : ByteArray := SystemBuiltins.anomaSignDetached 0 key-bytes;
+    signature : ByteArray := SystemBuiltins.anomaSignDetached message key-bytes;
   in Signature.mk@{
        unSignature := signature;
      };

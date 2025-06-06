@@ -74,14 +74,13 @@ logicFunction (args : Logic.Args) : Bool :=
 
 -- ----------------------------------------------------------------------------
 --  Create a transaction to mint some spacebucks.
-
 create-spacebucks-transaction
   {M : Type -> Type}
   {{Monad M}}
   {{Tx M}}
   (logic : Logic)
   (identity : Identity)
-  : M Transaction :=
+  : M String :=
   do {
     ctx <- getTxContext;
     nonce-created <- genRandomNonce;
@@ -133,11 +132,11 @@ create-spacebucks-transaction
       actions := AnomaSet.fromList [action];
 
     in
-    pure
-      Transaction.mk@{
-        roots := AnomaSet.fromList commitment-roots;
-        actions := AnomaSet.fromList [action];
-      };
+    pure "yeet";
+      -- Transaction.mk@{
+      --   roots := AnomaSet.fromList commitment-roots;
+      --   actions := AnomaSet.fromList [action];
+      -- };
   };
 
 -- ----------------------------------------------------------------------------
@@ -149,48 +148,23 @@ create-spacebucks-transaction
 main
   (logic : Logic)
   (publicKey : ByteArray)
-  (privateKey : ByteArray)
-  (latest-root : CommitmentRoot)
-  : TransactionRequest :=
+  : String :=
   let
     -- wrap the public and private key in a tuple to add in their length
     -- i have no idea why this is here, but whatever.
     -- parse the public and private key from the arguments and create the caller
     public-key := fix-raw-public-key publicKey;
-    private-key := fix-raw-private-key privateKey;
     -- create the identity record that holds the keypair.
     creator : Identity :=
       Identity.mk@{
-        internal := private-key;
+        internal := InternalIdentity.fromByteArray ByteArray.empty;
         external := public-key;
       };
     -- create the transaction context which holds the caller and the current root
     context : TxContext :=
       TxContext.mk@{
         caller := creator;
-        currentRoot := latest-root;
+        currentRoot := CommitmentRoot.fromNat 0;
       };
-  in TransactionRequest.build
-    0
-    context
-    (create-spacebucks-transaction logic creator);
-
--- Questions
--- =========
---  What is a nonce for a resource? What purpose does it serve?
-
--- Create a transaction to transfer resource R from A to B
--- =======================================================
-
--- A submits a transaction with parameters [R, A_public_key, A_private_key, B_public_key]
-
--- In the transaction function:
-
---   - create a resource R' that has B as the owner
---   - put actions in the transaction that contain the signature of some message M, signed with A_public_key, and A_private_key
-
--- The resource logic then verifies this transaction by:
---   - the resource logic can verify by using:
---     - the public key in the resource
---     - the message that was originally signed
---     - the signature put into the actions in the transaction function
+  -- in   Private.runTxBuilder' 0 context (create-spacebucks-transaction logic creator);
+  in   Private.runTxBuilder' 0 context (create-spacebucks-transaction logic creator);

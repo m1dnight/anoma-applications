@@ -5,7 +5,7 @@ defmodule AnomaApps.MetaMask.Initialize do
 
   alias AnomaApps.Client
   alias AnomaApps.Spacebucks.Helpers
-  alias AnomaApps.Spacebucks.User
+  alias AnomaApps.Shared.User
 
   @doc """
   I initialize some Spacebucks for an arbitrary user.
@@ -17,7 +17,7 @@ defmodule AnomaApps.MetaMask.Initialize do
     {:ok, resource_logic} = Helpers.resource_logic()
 
     # read the Mint.nockma code
-    {:ok, mint_nockma} = File.read("#{:code.priv_dir(:anoma_apps)}/juvix/.compiled/Spacebucks/Mint.nockma")
+    {:ok, mint_nockma} = File.read("#{:code.priv_dir(:anoma_apps)}/juvix/.compiled/SpacebucksMetaMask/Mint.nockma")
 
     # Fetch the latest root from the Anoma controller.
     latest_root = Client.latest_root()

@@ -5,7 +5,10 @@
 
 SPACEBUCKS_DST := priv/juvix/.compiled/Spacebucks
 SPACEBUCKS_SRC := priv/juvix/Spacebucks
-SPACE_BUCKS_JUVIX_FILES := $(SPACEBUCKS_SRC)/Mint.juvix $(SPACEBUCKS_SRC)/Transfer.juvix $(SPACEBUCKS_SRC)/Logic.juvix
+SPACE_BUCKS_JUVIX_FILES := $(SPACEBUCKS_SRC)/Mint.juvix     \
+						   $(SPACEBUCKS_SRC)/Transfer.juvix \
+						   $(SPACEBUCKS_SRC)/Logic.juvix
+
 SPACEBUCKS_NOCKMA_FILES := $(patsubst $(SPACEBUCKS_SRC)/%.juvix,$(SPACEBUCKS_DST)/%.nockma,$(SPACE_BUCKS_JUVIX_FILES))
 
 # rule to compile a single Juvix file to a Nockma file
@@ -20,7 +23,10 @@ $(SPACEBUCKS_DST)/%.nockma: $(SPACEBUCKS_SRC)/%.juvix
 
 MM_SPACEBUCKS_DST := priv/juvix/.compiled/SpacebucksMetaMask
 MM_SPACEBUCKS_SRC := priv/juvix/SpacebucksMetaMask
-MM_SPACE_BUCKS_JUVIX_FILES := $(MM_SPACEBUCKS_SRC)/Mint.juvix $(MM_SPACEBUCKS_SRC)/Logic.juvix
+MM_SPACE_BUCKS_JUVIX_FILES := $(MM_SPACEBUCKS_SRC)/Mint.juvix  \
+							  $(MM_SPACEBUCKS_SRC)/Logic.juvix \
+							  $(MM_SPACEBUCKS_SRC)/GetPublicKey.juvix
+
 MM_SPACEBUCKS_NOCKMA_FILES := $(patsubst $(MM_SPACEBUCKS_SRC)/%.juvix,$(MM_SPACEBUCKS_DST)/%.nockma,$(MM_SPACE_BUCKS_JUVIX_FILES))
 
 # rule to compile a single Juvix file to a Nockma file
@@ -34,7 +40,7 @@ $(MM_SPACEBUCKS_DST)/%.nockma: $(MM_SPACEBUCKS_SRC)/%.juvix
 # Generic rules
 
 # the list of all possible nockma files we might want to compile
-NOCKMA_FILES := $(MM_SPACEBUCKS_NOCKMA_FILES)
+NOCKMA_FILES := $(MM_SPACEBUCKS_NOCKMA_FILES) $(SPACEBUCKS_NOCKMA_FILES)
 
 # compile all the nockma files
 all: $(NOCKMA_FILES)
