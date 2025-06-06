@@ -80,7 +80,7 @@ create-spacebucks-transaction
   {{Tx M}}
   (logic : Logic)
   (identity : Identity)
-  : M String :=
+  : M (List String) :=
   do {
     ctx <- getTxContext;
     nonce-created <- genRandomNonce;
@@ -111,28 +111,30 @@ create-spacebucks-transaction
       rooted-nullifier :=
         RootedNullifiableResource.Transparent.mk current-root consumed-resource;
 
-      appdata-map : Map RawTag (List AppData.Value) := create-app-data identity nullifiers commitments;
+      to-sign := ["this"; "that"];
 
-      appdata-mine :  AnomaMap RawTag (List AppData.Value) := (AnomaMap.fromList (Map.toList appdata-map));
-      my-appdata : AppData := AppData.privateMk appdata-mine;
+      -- appdata-map : Map RawTag (List AppData.Value) := create-app-data identity nullifiers commitments;
 
-      -- appdata : AppData := AppData.fromMap (create-app-data identity nullifiers commitments);
+      -- appdata-mine :  AnomaMap RawTag (List AppData.Value) := (AnomaMap.fromList (Map.toList appdata-map));
+      -- my-appdata : AppData := AppData.privateMk appdata-mine;
 
-      action : Action :=
-        trace "appdata going in" >-> trace my-appdata >-> Action.create@{
-          consumed := [rooted-nullifier];
-          created := [created-resource];
-          appData := my-appdata;
-        };
-      -- commitment roots
-      commitment-roots := [current-root];
+      -- -- appdata : AppData := AppData.fromMap (create-app-data identity nullifiers commitments);
 
-      -- roots
-      roots := AnomaSet.fromList commitment-roots;
-      actions := AnomaSet.fromList [action];
+      -- action : Action :=
+      --   trace "appdata going in" >-> trace my-appdata >-> Action.create@{
+      --     consumed := [rooted-nullifier];
+      --     created := [created-resource];
+      --     appData := my-appdata;
+      --   };
+      -- -- commitment roots
+      -- commitment-roots := [current-root];
+
+      -- -- roots
+      -- roots := AnomaSet.fromList commitment-roots;
+      -- actions := AnomaSet.fromList [action];
 
     in
-    pure "yeet";
+    pure to-sign;
       -- Transaction.mk@{
       --   roots := AnomaSet.fromList commitment-roots;
       --   actions := AnomaSet.fromList [action];
@@ -148,7 +150,7 @@ create-spacebucks-transaction
 main
   (logic : Logic)
   (publicKey : ByteArray)
-  : String :=
+  : (List String) :=
   let
     -- wrap the public and private key in a tuple to add in their length
     -- i have no idea why this is here, but whatever.
