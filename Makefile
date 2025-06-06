@@ -23,8 +23,9 @@ $(SPACEBUCKS_DST)/%.nockma: $(SPACEBUCKS_SRC)/%.juvix
 
 MM_SPACEBUCKS_DST := priv/juvix/.compiled/SpacebucksMetaMask
 MM_SPACEBUCKS_SRC := priv/juvix/SpacebucksMetaMask
-MM_SPACE_BUCKS_JUVIX_FILES := $(MM_SPACEBUCKS_SRC)/Mint.juvix  \
-							  $(MM_SPACEBUCKS_SRC)/Logic.juvix \
+MM_SPACE_BUCKS_JUVIX_FILES := $(MM_SPACEBUCKS_SRC)/Mint.juvix          \
+							  $(MM_SPACEBUCKS_SRC)/Logic.juvix         \
+							  $(MM_SPACEBUCKS_SRC)/CreateAppData.juvix \
 							  $(MM_SPACEBUCKS_SRC)/GetPublicKey.juvix
 
 MM_SPACEBUCKS_NOCKMA_FILES := $(patsubst $(MM_SPACEBUCKS_SRC)/%.juvix,$(MM_SPACEBUCKS_DST)/%.nockma,$(MM_SPACE_BUCKS_JUVIX_FILES))

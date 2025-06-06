@@ -1,4 +1,4 @@
-module SpacebucksMetaMask.Mint;
+module SpacebucksMetaMask.CreateAppData;
 
 import Stdlib.Prelude open;
 import Applib open;
