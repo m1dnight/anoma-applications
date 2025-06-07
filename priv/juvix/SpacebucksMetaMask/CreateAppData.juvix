@@ -14,7 +14,7 @@ import Spacebucks.Spacebuck open;
 
 -- ----------------------------------------------------------------------------
 --  Create a transaction to mint some spacebucks.
-create-spacebucks-transaction
+create-spacebucks-appdata
   {M : Type -> Type}
   {{Monad M}}
   {{Tx M}}
@@ -59,8 +59,13 @@ create-spacebucks-transaction
 -- ----------------------------------------------------------------------------
 --  Main function
 
-main : AnomaAtom :=
+main
+  (message : Nat)
+  (signature : AnomaAtom)
+  (public-key : AnomaAtom)
+  (logic : Logic): AnomaAtom :=
   let
-    to-sign := 123;
+    identity := fix-raw-public-key public-key;
+    to-sign := Private.runTxBuilder' 0 context (create-spacebucks-appdata logic identity);
   in trace "data being signed"
     >-> to-sign;
