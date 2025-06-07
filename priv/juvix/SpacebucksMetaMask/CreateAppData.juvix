@@ -13,66 +13,6 @@ import Spacebucks.Signing open;
 import Spacebucks.Spacebuck open;
 
 -- ----------------------------------------------------------------------------
---  Logic function
-
--- validate an ephemeral consumed resource
--- always valid
-validate-ephemeral-consumed-resource (args : Logic.Args) : Bool :=
-  trace "ephemeral consumed valid?" >-> trace true >-> true;
-
--- validate a consumed resource
--- always valid
-validate-non-ephemeral-consumed-resource (args : Logic.Args) : Bool :=
-  trace "non-ephemeral consumed valid?" >-> trace true >-> true;
-
--- validate an ephemeral created resource
--- always valid
-validate-ephemeral-created-resource (args : Logic.Args) : Bool :=
-  trace "ephemeral created valid?" >-> trace true >-> true;
-
-
--- Given a public key, verifies the list of appdata values.
-verify-consumed-resource (appdata-values : List AppData.Value) (identity : ExternalIdentity) : Bool :=
-  let
-    verifications : List Bool := map (verify-signature identity) appdata-values;
-  in
-    all id verifications;
-
--- validate a created resource to create a resource, we must verify that the
--- signature in the created resource can be verified using the public key of the
--- owner of the consumed resource.
---
--- If bob has 1 apple, and wants to transfer it to alice.
--- the transfer transaction will create a new resource with owner alice, and consume a resource with owner bob.
---
--- to verify that this is allowed, verify the signature in the appdata using the public key found in the created resource.
-validate-non-ephemeral-created-resource (args : Logic.Args) : Bool :=
-  let
-    -- this is the owner of the new resource
-    new-owner : ExternalIdentity := spacebuck-owner (Logic.Args.self args);
-
-    -- this is the list of owners of the consumed resources
-    old-owners : List ExternalIdentity := map (spacebuck-owner) (Logic.Args.consumed args);
-
-    -- the list of signatures in the action
-    appdata-values : List AppData.Value := Logic.Args.data args;
-
-    -- verify all consumed resources
-    verifications : List Bool := map (verify-consumed-resource appdata-values) old-owners;
-  in
-    all id verifications;
-
-logicFunction (args : Logic.Args) : Bool :=
-  let
-    is-created := not (Logic.Args.isConsumed args);
-    is-ephemeral := Resource.ephemeral (Logic.Args.self args);
-  in if
-    | is-ephemeral && is-created := validate-ephemeral-created-resource args
-    | is-ephemeral := validate-ephemeral-consumed-resource args
-    | is-created := validate-non-ephemeral-created-resource args
-    | else := validate-non-ephemeral-consumed-resource args;
-
--- ----------------------------------------------------------------------------
 --  Create a transaction to mint some spacebucks.
 create-spacebucks-transaction
   {M : Type -> Type}
@@ -80,7 +20,7 @@ create-spacebucks-transaction
   {{Tx M}}
   (logic : Logic)
   (identity : Identity)
-  : M (List String) :=
+  : M (List AnomaAtom) :=
   do {
     ctx <- getTxContext;
     nonce-created <- genRandomNonce;
@@ -111,62 +51,16 @@ create-spacebucks-transaction
       rooted-nullifier :=
         RootedNullifiableResource.Transparent.mk current-root consumed-resource;
 
-      to-sign := ["this"; "that"];
-
-      -- appdata-map : Map RawTag (List AppData.Value) := create-app-data identity nullifiers commitments;
-
-      -- appdata-mine :  AnomaMap RawTag (List AppData.Value) := (AnomaMap.fromList (Map.toList appdata-map));
-      -- my-appdata : AppData := AppData.privateMk appdata-mine;
-
-      -- -- appdata : AppData := AppData.fromMap (create-app-data identity nullifiers commitments);
-
-      -- action : Action :=
-      --   trace "appdata going in" >-> trace my-appdata >-> Action.create@{
-      --     consumed := [rooted-nullifier];
-      --     created := [created-resource];
-      --     appData := my-appdata;
-      --   };
-      -- -- commitment roots
-      -- commitment-roots := [current-root];
-
-      -- -- roots
-      -- roots := AnomaSet.fromList commitment-roots;
-      -- actions := AnomaSet.fromList [action];
-
+      to-sign := map encode-atom commitments ++ map encode-atom nullifiers;
     in
     pure to-sign;
-      -- Transaction.mk@{
-      --   roots := AnomaSet.fromList commitment-roots;
-      --   actions := AnomaSet.fromList [action];
-      -- };
   };
 
 -- ----------------------------------------------------------------------------
 --  Main function
 
--- The label of a spacebuck is what uniquely identifies it. If Bob makes a
--- spacebuck, it's uniquely identified by the pair
--- (bob_public_key, "spacebuck").
-main
-  (logic : Logic)
-  (publicKey : ByteArray)
-  : (List String) :=
+main : AnomaAtom :=
   let
-    -- wrap the public and private key in a tuple to add in their length
-    -- i have no idea why this is here, but whatever.
-    -- parse the public and private key from the arguments and create the caller
-    public-key := fix-raw-public-key publicKey;
-    -- create the identity record that holds the keypair.
-    creator : Identity :=
-      Identity.mk@{
-        internal := InternalIdentity.fromByteArray ByteArray.empty;
-        external := public-key;
-      };
-    -- create the transaction context which holds the caller and the current root
-    context : TxContext :=
-      TxContext.mk@{
-        caller := creator;
-        currentRoot := CommitmentRoot.fromNat 0;
-      };
-  -- in   Private.runTxBuilder' 0 context (create-spacebucks-transaction logic creator);
-  in   Private.runTxBuilder' 0 context (create-spacebucks-transaction logic creator);
+    to-sign := 123;
+  in trace "data being signed"
+    >-> to-sign;
