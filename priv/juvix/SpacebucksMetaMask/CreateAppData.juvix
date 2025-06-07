@@ -10,7 +10,7 @@ import BaseLayer.ResourceMachine open;
 import Anoma.Builtin.System as SystemBuiltins open;
 import Spacebucks.Helpers open;
 import Spacebucks.Signing open;
-import Spacebucks.Spacebuck open;
+import SpacebucksMetaMask.MetaBuck open;
 
 -- ----------------------------------------------------------------------------
 --  Create a transaction to mint some spacebucks.
@@ -19,7 +19,7 @@ create-spacebucks-appdata
   {{Monad M}}
   {{Tx M}}
   (logic : Logic)
-  (identity : Identity)
+  (identity : ExternalIdentity)
   : M (List AnomaAtom) :=
   do {
     ctx <- getTxContext;
@@ -33,7 +33,7 @@ create-spacebucks-appdata
       current-root : CommitmentRoot := TxContext.currentRoot ctx;
       -- create the created resource and its commitment
       created-resource :=
-        make-spacebuck logic identity label quantity nonce-created;
+        make-metabuck logic identity label quantity nonce-created;
 
       -- create the consumed ephemeral resource and its nullifier
       consumed-resource : Resource :=
@@ -62,10 +62,21 @@ create-spacebucks-appdata
 main
   (message : Nat)
   (signature : AnomaAtom)
-  (public-key : AnomaAtom)
-  (logic : Logic): AnomaAtom :=
+  (public-key : ByteArray)
+  (logic : Logic)
+  : List AnomaAtom :=
   let
-    identity := fix-raw-public-key public-key;
-    to-sign := Private.runTxBuilder' 0 context (create-spacebucks-appdata logic identity);
-  in trace "data being signed"
-    >-> to-sign;
+    -- the identit of the user who signed to create the spacebucks
+    identity : ExternalIdentity := fix-raw-public-key public-key;
+    -- create the transaction context which holds the caller and the current root
+    context : TxContext :=
+      TxContext.mk@{
+        caller := Universal.identity;
+        currentRoot := CommitmentRoot.fromNat 0;
+      };
+    to-sign :=
+      Private.runTxBuilder'
+        0
+        context
+        (create-spacebucks-appdata logic identity);
+  in trace "data being signed" >-> to-sign;

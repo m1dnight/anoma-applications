@@ -1,0 +1,81 @@
+module SpacebucksMetaMask.MetaBuck;
+
+import Stdlib.Prelude open;
+import Applib open;
+import Anoma.Encode open;
+import Stdlib.Debug.Trace open;
+import Anoma.Identity.External open;
+import Anoma.Identity.Internal open;
+import BaseLayer.ResourceMachine open;
+import Anoma.Builtin.System as SystemBuiltins open;
+import Spacebucks.Helpers open;
+
+-- Returns the owner of a metabuck resource.
+-- The owner is defined by their public key.
+metabuck-owner (resource : Resource) : ExternalIdentity :=
+  let
+    atom : AnomaAtom := Resource.value resource;
+    nat : Nat := AnomaAtom.toNat atom;
+    value : MetabuckValue := builtinAnomaDecode nat;
+    owner : ExternalIdentity := MetabuckValue.owner value;
+  in owner;
+
+-- ----------------------------------------------------------------------------
+--  Value for a Metabuck
+--
+-- The value of a metabuck is the meta-data associated with it.
+-- For each user, we add the owner as the value.
+
+type MetabuckValue :=
+  mkMetabuckValue@{
+    owner : ExternalIdentity;
+  };
+
+make-metabuck-value (creator : ExternalIdentity) : MetabuckValue :=
+  MetabuckValue.mkMetabuckValue@{
+    owner := creator;
+  };
+
+-- ----------------------------------------------------------------------------
+--  Metabuck Label
+--
+-- The label of a metabuck is just the string "Metabuck".
+
+make-metabuck-label : Label := Label.mk (builtinAnomaEncode "metabucks");
+
+-- ----------------------------------------------------------------------------
+--  Metabuck definition
+
+-- resourceLogic: The logic of a resource defines constraints on how it can be
+-- consumed or created.
+--
+-- creator: The keypair of the user who creates this resource.
+--
+-- label: The label is the unique identifier of a resource. It differentiates
+-- between Bob's metabucks and Alice's metabucks.
+--
+-- value: the value of the resource. This is sort of a meta data field where we can put in anything we want.
+--
+-- quantity: quantity of the resource, e.g., how many metabucks.
+--
+-- nonce: the nonce of the resource. TODO
+make-metabuck
+  (resource-logic : Logic)
+  (creator-public : ExternalIdentity)
+  (label : Label)
+  (quantity : Nat)
+  (nonce : Nonce)
+  : Resource :=
+  let
+    metabuck-value : MetabuckValue := make-metabuck-value creator-public;
+    value : AnomaAtom := (encode-atom metabuck-value);
+  in Resource.mk@{
+       logic := Encoded.encode resource-logic;
+       label := make-metabuck-label;
+       value := value;
+       quantity := quantity;
+       ephemeral := false;
+       nonce := nonce;
+       nullifierKeyCommitment := NullifierKeyCommitment.zero;
+       unusedRandSeed := 0;
+     };
