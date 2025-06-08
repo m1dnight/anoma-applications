@@ -1,0 +1,13 @@
+:type just 1
+:type just 1
+just 1
+let (x, y, z) := (1, 2, 3); in z;
+let (x, y, z) := (1, 2, 3); in y;
+let (x, y, z) := (1, 2, 3); in x;
+(x, y, z) := (1, 2, 3);
+(x, y, z) := (1, 2, 3)
+:t (1, 2, 3)
+(1, 2, 3)
+not true;
+not true;
+! true

@@ -1,0 +1,65 @@
+module SpacebucksMetaMask.Signing;
+
+import Stdlib.Prelude open;
+import Applib open;
+import Anoma.Encode open;
+import Stdlib.Debug.Trace open;
+import Anoma.Identity.External open;
+import Anoma.Identity.Internal open;
+import BaseLayer.ResourceMachine open;
+import Anoma.Builtin.System as SystemBuiltins open;
+import Spacebucks.Helpers open;
+
+-- create a list of nullifiers for the given list of resources.
+nullifiers-for-consumed (resources : List Resource) : List Nullifier :=
+  map Resource.Transparent.nullifier resources;
+
+-- create a list of commitments for a list of resources.
+commitments-for-created (resources : List Resource) : List Commitment :=
+  map (rawCommitment >> Commitment.fromNat) resources;
+
+-- Given a nullifier or commitment, this function generates a Pair of tags and
+-- the list of appdata values.
+create-app-data-value-nullifier
+  (identity : ExternalIdentity)
+  (signature : AnomaAtom)
+  (nullifier : Nullifier)
+  : Pair RawTag (List AppData.Value) :=
+  let
+    tag : RawTag := Nullifier.toRawTag nullifier;
+  in tag
+    , [
+        AppData.Value.mk@{
+          atom := signature;
+          deletionCriteria := false;
+        };
+      ];
+
+create-app-data-value-commitment
+  (identity : ExternalIdentity)
+  (signature : AnomaAtom)
+  (commitment : Commitment)
+  : Pair RawTag (List AppData.Value) :=
+  let
+    tag : RawTag := Commitment.toRawTag commitment;
+  in tag
+    , [
+        AppData.Value.mk@{
+          atom := signature;
+          deletionCriteria := false;
+        };
+      ];
+
+create-app-data
+  (identity : ExternalIdentity)
+  (signature : AnomaAtom)
+  (nullifiers : List Nullifier)
+  (commitments : List Commitment)
+  : AppData :=
+  let
+    nullifiers-data  := map (create-app-data-value-nullifier identity signature) nullifiers;
+    commitments-data := map (create-app-data-value-commitment identity signature) commitments;
+    app-data-map : Map RawTag (List AppData.Value) := Map.fromList (nullifiers-data ++ commitments-data);
+    app-data-m : AnomaMap RawTag (List AppData.Value) := AnomaMap.fromList (Map.toList app-data-map);
+    app-data : AppData := AppData.privateMk app-data-m;
+  in app-data;

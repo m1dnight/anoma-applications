@@ -2,7 +2,7 @@ module SpacebucksMetaMask.Logic;
 
 import Stdlib.Prelude open;
 import Applib open;
-import Spacebucks.Mint open;
+import SpacebucksMetaMask.Mint open;
 import Stdlib.Debug as Debug;
 
 type LogicWrapper :=

@@ -1,6 +1,7 @@
 module SpacebucksMetaMask.CreateAppData;
 
 import Stdlib.Prelude open;
+import Stdlib.Debug.Fail open;
 import Applib open;
 import Anoma.Encode open;
 import Stdlib.Debug.Trace open;
@@ -9,7 +10,7 @@ import Anoma.Identity.Internal open;
 import BaseLayer.ResourceMachine open;
 import Anoma.Builtin.System as SystemBuiltins open;
 import Spacebucks.Helpers open;
-import Spacebucks.Signing open;
+import SpacebucksMetaMask.Signing open;
 import SpacebucksMetaMask.MetaBuck open;
 
 -- ----------------------------------------------------------------------------
@@ -20,7 +21,7 @@ create-spacebucks-appdata
   {{Tx M}}
   (logic : Logic)
   (identity : ExternalIdentity)
-  : M (List AnomaAtom) :=
+  : M  (Pair Resource Resource) :=
   do {
     ctx <- getTxContext;
     nonce-created <- genRandomNonce;
@@ -32,8 +33,7 @@ create-spacebucks-appdata
       -- the current root passed in via the transaction context
       current-root : CommitmentRoot := TxContext.currentRoot ctx;
       -- create the created resource and its commitment
-      created-resource :=
-        make-metabuck logic identity label quantity nonce-created;
+      created-resource := make-metabuck logic identity label quantity nonce-created;
 
       -- create the consumed ephemeral resource and its nullifier
       consumed-resource : Resource :=
@@ -43,17 +43,13 @@ create-spacebucks-appdata
         };
 
       -- create commitments and nullifiers
-      commitments : List Commitment :=
-        commitments-for-created [created-resource];
-      nullifiers : List Nullifier :=
-        nullifiers-for-consumed [consumed-resource];
+      commitments : List Commitment := commitments-for-created [created-resource];
+      nullifiers : List Nullifier := nullifiers-for-consumed [consumed-resource];
 
-      rooted-nullifier :=
-        RootedNullifiableResource.Transparent.mk current-root consumed-resource;
+      rooted-nullifier := RootedNullifiableResource.Transparent.mk current-root consumed-resource;
 
-      to-sign := map encode-atom commitments ++ map encode-atom nullifiers;
     in
-    pure to-sign;
+    trace "created" >-> trace created-resource >-> trace "consumed" >-> trace consumed-resource >-> pure (created-resource, consumed-resource);
   };
 
 -- ----------------------------------------------------------------------------
@@ -64,7 +60,7 @@ main
   (signature : AnomaAtom)
   (public-key : ByteArray)
   (logic : Logic)
-  : List AnomaAtom :=
+  : AnomaAtom :=
   let
     -- the identit of the user who signed to create the spacebucks
     identity : ExternalIdentity := fix-raw-public-key public-key;
@@ -74,9 +70,7 @@ main
         caller := Universal.identity;
         currentRoot := CommitmentRoot.fromNat 0;
       };
-    to-sign :=
-      Private.runTxBuilder'
-        0
-        context
-        (create-spacebucks-appdata logic identity);
-  in trace "data being signed" >-> to-sign;
+    -- the message the user has to sign in order to create a transaction
+    to-sign :  (Pair Resource Resource) := Private.runTxBuilder' 0 context (create-spacebucks-appdata logic identity);
+    encoded := encode-atom to-sign;
+  in encode-atom encoded;
