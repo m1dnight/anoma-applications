@@ -14,6 +14,8 @@ defmodule AnomaApps.Spacebucks.Initialize do
   def initialize do
     user = User.new()
 
+    IO.inspect user.public_key, label: "public key"
+
     {:ok, resource_logic} = Helpers.resource_logic()
 
     # read the Mint.nockma code

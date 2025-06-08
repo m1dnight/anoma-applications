@@ -67,10 +67,11 @@ create-spacebucks-transaction
 verify-signed
   (message : AnomaAtom) (signature : AnomaAtom) (public-key : AnomaAtom) : Bool :=
   let
-    message-nat : Nat := AnomaAtom.toNat message;
-    signature-nat : Nat := AnomaAtom.toNat signature;
-    public-key-nat : Nat := AnomaAtom.toNat public-key;
-  in Secp256k1.Private.verify message-nat signature-nat public-key-nat;
+    message-nat : Nat := trace message >-> AnomaAtom.toNat message;
+    signature-nat : Nat := trace signature >-> AnomaAtom.toNat signature;
+    key : ExternalIdentity  := trace "yeet" >-> ExternalIdentity.fromAnomaAtom public-key;
+    key-nat : Nat := AnomaAtom.toNat public-key;
+  in trace "WORK DAMNIT" >-> trace key >-> Secp256k1.Private.verify message-nat signature-nat key-nat;
 
 -- ----------------------------------------------------------------------------
 --  Main function
@@ -84,22 +85,20 @@ main
   (signature : AnomaAtom)
   (public-key : AnomaAtom)
   (current-root : CommitmentRoot)
-  : TransactionRequest :=
+  : TransactionRequest := trace "doing mint" >->
   if
     | not (verify-signed message signature public-key) :=
       failwith "invalid signature"
     | else :=
       trace "valid signature"
-      >-> trace current-root
-      >-> trace appdata
+      >-> trace public-key
       >-> let
               -- decode the public key from the signer
               -- the identity of the user who signed to create the spacebucks
-              the-public-key : ByteArray := ByteArray.fromAnomaContents 32 public-key;
-              identity : ExternalIdentity := fix-raw-public-key the-public-key;
+              identity : ExternalIdentity := ExternalIdentity.fromAnomaAtom public-key;
 
               -- decode the created and consumed resource the user signed over
-              jammed-appdata : AnomaAtom := decode-atom appdata;
+              jammed-appdata : AnomaAtom := trace "identity" >-> trace identity >-> decode-atom appdata;
               (created-resource, consumed-resource) :  (Pair Resource Resource) := decode-atom jammed-appdata;
 
               -- create commitments and nullifiers

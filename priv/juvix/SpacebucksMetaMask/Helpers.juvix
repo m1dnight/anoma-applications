@@ -36,5 +36,6 @@ fix-raw-public-key (priv-key : ByteArray) : ExternalIdentity :=
     key-pair := 32, priv-key;
     key-atom : AnomaAtom := (encode-atom key-pair);
     key-bytes : ByteArray := builtinAnomaDecode (AnomaAtom.toNat key-atom);
+    -- remove all above
     identity := ExternalIdentity.fromByteArray key-bytes;
   in identity;

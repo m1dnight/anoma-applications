@@ -46,16 +46,27 @@ create-spacebucks-appdata
 --  Main function
 
 main
+  (ignored : ByteArray)
   (message : Nat)
   (signature : AnomaAtom)
   (public-key : ByteArray)
   (logic : Logic)
   : AnomaAtom :=
-  let
+  trace "logic"
+  >-> trace logic
+  >-> trace "message"
+  >-> trace message
+  >-> trace "signature"
+  >-> trace signature
+  >-> trace "public-key"
+  >-> trace public-key
+  >-> trace "ignored"
+  >-> trace ignored
+  >-> let
     -- the identit of the user who signed to create the spacebucks
-    identity : ExternalIdentity := fix-raw-public-key public-key;
+    identity : ExternalIdentity := trace public-key >-> fix-raw-public-key public-key;
     -- create the transaction context which holds the caller and the current root
-    context : TxContext :=
+    context : TxContext := trace "identity" >-> trace identity >->
       TxContext.mk@{
         caller := Universal.identity;
         currentRoot := CommitmentRoot.fromNat 0;
