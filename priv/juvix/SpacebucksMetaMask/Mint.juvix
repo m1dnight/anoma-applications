@@ -8,9 +8,8 @@ import Anoma.Identity.External open;
 import Anoma.Identity.Internal open;
 import BaseLayer.ResourceMachine open;
 import Anoma.Builtin.System as SystemBuiltins open;
-import Spacebucks.Helpers open;
+import SpacebucksMetaMask.Helpers open;
 import SpacebucksMetaMask.Signing open;
-import Spacebucks.Spacebuck open;
 import Applib.Keccak256 open;
 import Applib.Secp256k1 open;
 import Stdlib.Debug.Fail open;
@@ -84,12 +83,15 @@ main
   (message : AnomaAtom)
   (signature : AnomaAtom)
   (public-key : AnomaAtom)
+  (current-root : CommitmentRoot)
   : TransactionRequest :=
   if
     | not (verify-signed message signature public-key) :=
       failwith "invalid signature"
     | else :=
       trace "valid signature"
+      >-> trace current-root
+      >-> trace appdata
       >-> let
               -- decode the public key from the signer
               -- the identity of the user who signed to create the spacebucks

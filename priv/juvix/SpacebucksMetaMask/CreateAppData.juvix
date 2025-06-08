@@ -9,7 +9,7 @@ import Anoma.Identity.External open;
 import Anoma.Identity.Internal open;
 import BaseLayer.ResourceMachine open;
 import Anoma.Builtin.System as SystemBuiltins open;
-import Spacebucks.Helpers open;
+import SpacebucksMetaMask.Helpers open;
 import SpacebucksMetaMask.Signing open;
 import SpacebucksMetaMask.MetaBuck open;
 
@@ -29,9 +29,6 @@ create-spacebucks-appdata
     let
       label := Label.mk 0;
       quantity := 10;
-
-      -- the current root passed in via the transaction context
-      current-root : CommitmentRoot := TxContext.currentRoot ctx;
       -- create the created resource and its commitment
       created-resource := make-metabuck logic identity label quantity nonce-created;
 
@@ -41,13 +38,6 @@ create-spacebucks-appdata
           ephemeral := true;
           nonce := nonce-consumed;
         };
-
-      -- create commitments and nullifiers
-      commitments : List Commitment := commitments-for-created [created-resource];
-      nullifiers : List Nullifier := nullifiers-for-consumed [consumed-resource];
-
-      rooted-nullifier := RootedNullifiableResource.Transparent.mk current-root consumed-resource;
-
     in
     trace "created" >-> trace created-resource >-> trace "consumed" >-> trace consumed-resource >-> pure (created-resource, consumed-resource);
   };
